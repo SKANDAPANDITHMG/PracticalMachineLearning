@@ -1,0 +1,134 @@
+Barbell Lifts Prediction
+Overview
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, the goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+
+We will test two prediction models:
+
+Classification Tree
+Random Forests
+Data Loading and Preparation
+Set seed
+set.seed(42)
+Loading required libraries
+
+library(caret)
+library(rattle)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+Download datasets
+
+if(!file.exists("pml-traininig.csv")) {
+    download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile="pml-traininig.csv")
+}
+if(!file.exists("pml-testing.csv")) {
+    download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile="pml-testing.csv")
+}
+
+trainingSet <- read.csv("pml-traininig.csv", na.strings=c("NA","","#DIV/0!"))
+testingSet <- read.csv("pml-testing.csv", na.strings=c("NA","","#DIV/0!"))
+Remove useless variables
+
+trainingSet$classe <- factor(trainingSet$classe)
+
+# Remove useless user info
+trainingSet <- trainingSet[, -c(1:7)]
+testingSet <- testingSet[, -c(1:7)]
+
+# Remove NA variables
+noNACol <- colSums(is.na(trainingSet)) == 0
+trainingSet <- trainingSet[, noNACol]
+testingSet <- testingSet[, noNACol]
+Data slicing
+
+inTrain <- createDataPartition(trainingSet$classe, p=0.6, list=FALSE)
+training <- trainingSet[inTrain,]
+testing <- trainingSet[-inTrain,]
+dim(training)
+## [1] 11776    53
+dim(testing)
+## [1] 7846   53
+Prediction Model & Cross-validation
+Classification Tree
+modelRPart <- rpart(classe ~ ., method="class", data=training)
+fancyRpartPlot(modelRPart, sub="")
+## Warning: labs do not fit even at cex 0.15, there may be some overplotting
+
+
+predRPart <- predict(modelRPart, newdata=testing, type="class")
+confusionMatrix(predRPart, testing$classe)
+## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 2039  253   33   76   22
+##          B   60  802   78  103  144
+##          C   63  226 1149  192  161
+##          D   28  115   87  825   99
+##          E   42  122   21   90 1016
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.7432          
+##                  95% CI : (0.7334, 0.7528)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc > NIR] : < 2.2e-16       
+##                                           
+##                   Kappa : 0.6744          
+##                                           
+##  Mcnemar's Test P-Value : < 2.2e-16       
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9135   0.5283   0.8399   0.6415   0.7046
+## Specificity            0.9316   0.9392   0.9009   0.9498   0.9571
+## Pos Pred Value         0.8415   0.6757   0.6415   0.7149   0.7870
+## Neg Pred Value         0.9644   0.8925   0.9638   0.9311   0.9350
+## Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
+## Detection Rate         0.2599   0.1022   0.1464   0.1051   0.1295
+## Detection Prevalence   0.3088   0.1513   0.2283   0.1471   0.1645
+## Balanced Accuracy      0.9226   0.7337   0.8704   0.7957   0.8308
+Random Forests
+modelRF <- randomForest(classe ~ ., method="class", data=training)
+predRF <- predict(modelRF, newdata=testing, type="class")
+confusionMatrix(predRF, testing$classe)
+## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 2227    7    0    0    0
+##          B    4 1510    9    0    0
+##          C    1    1 1355   10    0
+##          D    0    0    4 1269    1
+##          E    0    0    0    7 1441
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.9944          
+##                  95% CI : (0.9925, 0.9959)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc > NIR] : < 2.2e-16       
+##                                           
+##                   Kappa : 0.9929          
+##                                           
+##  Mcnemar's Test P-Value : NA              
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9978   0.9947   0.9905   0.9868   0.9993
+## Specificity            0.9988   0.9979   0.9981   0.9992   0.9989
+## Pos Pred Value         0.9969   0.9915   0.9912   0.9961   0.9952
+## Neg Pred Value         0.9991   0.9987   0.9980   0.9974   0.9998
+## Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
+## Detection Rate         0.2838   0.1925   0.1727   0.1617   0.1837
+## Detection Prevalence   0.2847   0.1941   0.1742   0.1624   0.1846
+## Balanced Accuracy      0.9983   0.9963   0.9943   0.9930   0.9991
+Using Random Forests Model to Predict Testing Set
+Since Random Forests Model has a higher accuracy (0.9944) than Classification Tree Model (0.7432). We will use Random Forests Model to predict testing set.
+
+predict(modelRF, newdata=testingSet, type="class")
+##  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
+##  B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 
+## Levels: A B C D E
