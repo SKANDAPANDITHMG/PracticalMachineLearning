@@ -1,0 +1,93 @@
+---
+title: "Barbell Lifts Prediction"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Overview
+
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, the goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+
+We will test two prediction models:
+
+  - Classification Tree
+  - Random Forests
+
+# Data Loading and Preparation
+
+# Set seed
+```{r}
+set.seed(42)
+```
+
+
+Loading required libraries
+```{r message=FALSE, warning=FALSE}
+library(caret)
+library(rattle)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+```
+
+Download datasets
+```{r}
+if(!file.exists("pml-traininig.csv")) {
+    download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile="pml-traininig.csv")
+}
+if(!file.exists("pml-testing.csv")) {
+    download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile="pml-testing.csv")
+}
+trainingSet <- read.csv("pml-traininig.csv", na.strings=c("NA","","#DIV/0!"))
+testingSet <- read.csv("pml-testing.csv", na.strings=c("NA","","#DIV/0!"))
+```
+
+Remove useless variables
+```{r}
+trainingSet$classe <- factor(trainingSet$classe)
+# Remove useless user info
+trainingSet <- trainingSet[, -c(1:7)]
+testingSet <- testingSet[, -c(1:7)]
+# Remove NA variables
+noNACol <- colSums(is.na(trainingSet)) == 0
+trainingSet <- trainingSet[, noNACol]
+testingSet <- testingSet[, noNACol]
+```
+
+Data slicing
+```{r}
+inTrain <- createDataPartition(trainingSet$classe, p=0.6, list=FALSE)
+training <- trainingSet[inTrain,]
+testing <- trainingSet[-inTrain,]
+```
+
+```{r}
+dim(training)
+dim(testing)
+```
+
+# Prediction Model & Cross-validation
+
+### Classification Tree
+```{r}
+modelRPart <- rpart(classe ~ ., method="class", data=training)
+fancyRpartPlot(modelRPart, sub="")
+predRPart <- predict(modelRPart, newdata=testing, type="class")
+confusionMatrix(predRPart, testing$classe)
+```
+
+### Random Forests
+```{r}
+modelRF <- randomForest(classe ~ ., method="class", data=training)
+predRF <- predict(modelRF, newdata=testing, type="class")
+confusionMatrix(predRF, testing$classe)
+```
+
+# Using Random Forests Model to Predict Testing Set
+
+Since **Random Forests** Model has a higher accuracy (0.9944) than Classification Tree Model (0.7432). We will use Random Forests Model to predict testing set.
+
+```{r}
+predict(modelRF, newdata=testingSet, type="class")
+```
